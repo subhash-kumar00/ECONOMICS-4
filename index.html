@@ -134,7 +134,7 @@
         <div class="flex justify-end">
           <button type="button" onclick="returnToHomeWithData()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-xl text-xs transition shadow flex items-center space-x-1.5">
             <span>🏠</span>
-            <span>ഹോം പേജിലേക്ക് മടങ്ങുക</span>
+            <span>ഹോം പേജിലേക്ക് മടങ്ങുക (Save)</span>
           </button>
         </div>
 
@@ -275,9 +275,13 @@
 
   <script>
     let GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwKBTm6Hj11YhzZLCEMBupKa3XAuq7Ns4M5iyU4vzwxaXfppLGWIR9ZWJeWlvGBjRaG/exec";
-    const QUIZ_SHEET_NAME = "Economics_Set4";
+    
+    // 🌟 ഗൂഗിൾ ഷീറ്റ് ടാബ് പേര്
+    const QUIZ_SHEET_NAME = "Economics_Set4"; 
+    
+    // ഹോം പേജിൽ ടാബുമായി മാച്ച് ആകാൻ ഇംഗ്ലീഷ് / മലയാളം ടൈറ്റിലുകൾ ഓട്ടോമാറ്റിക് ആയി ക്രമീകരിക്കുന്നു
+    let examTitle = "Economics_Set4"; 
     let ORIGINAL_PDF_URL = "https://docs.google.com/document/d/YOUR_GOOGLE_DOC_ID/export?format=pdf";
-    let examTitle = "സാമ്പത്തിക ശാസ്ത്രം - സെറ്റ് 4";
 
     const questionsData = [
       {
@@ -472,7 +476,14 @@
       }
 
       if (passedPhone) currentUser.phone = decodeURIComponent(passedPhone);
-      if (passedTitle) examTitle = decodeURIComponent(passedTitle);
+      
+      // 🌟 ഷീറ്റിലുള്ള അതേ പേര് ലഭിക്കാൻ ഇത് ഉപയോഗിക്കുന്നു
+      if (passedTitle) {
+        examTitle = decodeURIComponent(passedTitle).trim();
+      } else {
+        examTitle = QUIZ_SHEET_NAME;
+      }
+      
       if (passedSheet) GOOGLE_SHEET_WEBAPP_URL = decodeURIComponent(passedSheet);
       if (passedPdf) ORIGINAL_PDF_URL = decodeURIComponent(passedPdf);
 
@@ -488,7 +499,7 @@
         motElem.innerText = `ഹലോ, ${currentUser.name}! ✨`;
       }
 
-      // 🌟 Previous Results ക്ലിക്ക് ചെയ്യുമ്പോൾ സ്റ്റക്ക് ആകാതെ നേരിട്ട് ഉത്തരങ്ങൾ തുറക്കുന്ന ഭാഗം
+      // 🌟 'Previous Results' ക്ലിക്ക് ചെയ്തതാണോ എന്ന് പരിശോധിക്കുന്ന ഭാഗം
       const currentFullUrl = window.location.href.toLowerCase();
       const isReviewMode = currentFullUrl.includes("view=solution") || 
                            currentFullUrl.includes("solution") || 
@@ -497,50 +508,66 @@
                            urlParams.get('view') === 'solution';
 
       if (isReviewMode) {
-        // സ്റ്റാർട്ട് കാർഡ് പൂർണ്ണമായി ഒളിപ്പിക്കുന്നു
-        const motScreen = document.getElementById('motivationScreen');
-        if (motScreen) {
-          motScreen.classList.add('hidden');
-          motScreen.style.setProperty('display', 'none', 'important');
+        // സ്റ്റാർട്ട് കാർഡുകൾ പൂർണ്ണമായി ഹൈഡ് ചെയ്യുന്നു
+        if (motivationScreen) {
+          motivationScreen.classList.add('hidden');
+          motivationScreen.style.setProperty('display', 'none', 'important');
         }
 
-        const qScreen = document.getElementById('quizScreen');
-        if (qScreen) {
-          qScreen.classList.add('hidden');
-          qScreen.classList.remove('flex');
-          qScreen.style.setProperty('display', 'none', 'important');
+        if (quizScreen) {
+          quizScreen.classList.add('hidden');
+          quizScreen.classList.remove('flex');
+          quizScreen.style.setProperty('display', 'none', 'important');
         }
 
-        // റിസൾട്ട് സ്ക്രീൻ നിർബന്ധമായും ഓപ്പൺ ചെയ്യുന്നു
-        const resScreen = document.getElementById('resultScreen');
-        if (resScreen) {
-          resScreen.classList.remove('hidden');
-          resScreen.style.setProperty('display', 'block', 'important');
+        // റിസൾട്ട് സ്ക്രീൻ ഓപ്പൺ ചെയ്യുന്നു
+        if (resultScreen) {
+          resultScreen.classList.remove('hidden');
+          resultScreen.style.setProperty('display', 'block', 'important');
         }
 
-        // സ്കോറുകൾ റിവ്യൂ മോഡിലേക്ക് മാറ്റുന്നു
-        document.getElementById('resultHeaderTitle').innerText = "ഉത്തര സൂചിക (Official Answer Key)";
-        document.getElementById('finalScore').innerText = "✓";
-        document.getElementById('correctCount').innerText = "--";
-        document.getElementById('wrongCount').innerText = "--";
-        document.getElementById('skipCount').innerText = "--";
+        // 🌟 കുട്ടിയുടെ മുൻപത്തെ സ്കോർ കണ്ടെത്തുന്നു
+        let prevScore = urlParams.get('score');
+        let prevCorrect = urlParams.get('correct');
+        let prevWrong = urlParams.get('wrong');
+        let prevSkipped = urlParams.get('skipped');
 
-        const scoreCards = document.getElementById('scoreCardsContainer');
-        if (scoreCards) scoreCards.style.display = 'none';
+        // URL-ൽ ഇല്ലെങ്കിൽ ലോക്കൽ ഹിസ്റ്ററിയിൽ നിന്നും മാച്ച് ചെയ്ത് സ്കോർ എടുക്കുന്നു
+        if ((!prevScore || prevScore === "0.00" || prevScore === "0") && currentUser.phone) {
+          try {
+            const histKey = `sk_history_${currentUser.phone}`;
+            const history = JSON.parse(localStorage.getItem(histKey) || '[]');
+            const matched = history.slice().reverse().find(h => 
+              h.title === examTitle || 
+              h.title === QUIZ_SHEET_NAME ||
+              (h.title && (h.title.includes("Set4") || h.title.includes("സെറ്റ് 4")))
+            );
+            if (matched) {
+              prevScore = matched.score;
+              prevCorrect = matched.correct;
+              prevWrong = matched.wrong;
+              prevSkipped = matched.skipped;
+            }
+          } catch(e) {}
+        }
+
+        // സ്കോർ കാർഡുകളിൽ കൃത്യമായ മാർക്ക് നൽകുന്നു
+        document.getElementById('resultHeaderTitle').innerText = "കഴിഞ്ഞ പരീക്ഷാ ഫലം & ഉത്തര സൂചിക";
+        document.getElementById('finalScore').innerText = prevScore !== null ? Number(prevScore).toFixed(2) : "0.00";
+        document.getElementById('correctCount').innerText = prevCorrect !== null ? prevCorrect : "0";
+        document.getElementById('wrongCount').innerText = prevWrong !== null ? prevWrong : "0";
+        document.getElementById('skipCount').innerText = prevSkipped !== null ? prevSkipped : "0";
 
         const statusElem = document.getElementById('sheetStatus');
         if (statusElem) statusElem.style.display = 'none';
 
         const subBadge = document.getElementById('resultSubBadge');
-        if (subBadge) subBadge.innerText = "✓ എല്ലാ ചോദ്യങ്ങളുടെയും ശരിയുത്തരങ്ങളും വിശദീകരണങ്ങളും താഴെ നൽകിയിരിക്കുന്നു";
-
-        const lockNotice = document.getElementById('pdfLockNotice');
-        if (lockNotice) lockNotice.style.display = 'none';
+        if (subBadge) subBadge.innerText = "✓ നിങ്ങൾ മുൻപ് എഴുതിയ പരീക്ഷയുടെ സ്കോറും വിശദീകരണങ്ങളും താഴെ കാണാം";
 
         const badge = document.getElementById('scoreMotivationBadge');
         if (badge) {
           badge.className = "max-w-xl mx-auto p-4 rounded-2xl border border-cyan-500/60 bg-cyan-950/40 text-cyan-300";
-          badge.innerHTML = `📖 <strong>ആൻസർ കീ & വിശദീകരണങ്ങൾ</strong> (Answer Key & Solutions Review Mode)`;
+          badge.innerHTML = `📖 <strong>മുൻപത്തെ സ്കോർ അവലോകനം</strong> (Previous Attempt Review Mode)`;
         }
 
         renderReviewOnlySolutions();
@@ -763,12 +790,18 @@
         badge.innerHTML = `💪 <strong>തളരരുത്!</strong> നോട്ട്സുകൾ കൂടുതൽ ആഴത്തിൽ പഠിച്ച് വീണ്ടും പരിശീലിക്കുക.`;
       }
 
+      // 🌟 ലോക്കൽ ഹിസ്റ്ററിയിൽ കാർഡിന്റെ ടൈറ്റിൽ (QUIZ_SHEET_NAME ഉം examTitle ഉം) മാച്ച് ആകുന്ന രീതിയിൽ സേവ് ചെയ്യുന്നു
       try {
         if (currentUser && currentUser.phone && currentUser.phone !== "0000000000") {
           const historyKey = `sk_history_${currentUser.phone}`;
           let history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          
+          history = history.filter(h => !(h.title && (h.title === examTitle || h.title === QUIZ_SHEET_NAME)));
+          
+          // കാർഡുമായി മാച്ച് ആകാൻ QUIZ_SHEET_NAME തന്നെയോ examTitle ഓ നൽകുന്നു
           history.push({
             title: examTitle,
+            sheetName: QUIZ_SHEET_NAME,
             score: formattedScore,
             correct: correct,
             wrong: wrong,
@@ -1182,6 +1215,7 @@
       document.getElementById('leaderboardModal').classList.add('hidden');
     }
 
+    // 🌟 ഹോം പേജിലേക്ക് തിരികെ പോകുമ്പോൾ ഷീറ്റ് നെയിമും ഒപ്പം പാസ്സ് ചെയ്യുന്നു
     function returnToHomeWithData() {
       const homePortalUrl = "https://subhash-kumar00.github.io/PSC-EXAMS/";
       const score = document.getElementById('finalScore').innerText;
@@ -1189,7 +1223,7 @@
       const wrong = document.getElementById('wrongCount').innerText;
       const skipped = document.getElementById('skipCount').innerText;
 
-      window.location.href = `${homePortalUrl}?completed=true&title=${encodeURIComponent(examTitle)}&score=${score}&correct=${correct}&wrong=${wrong}&skipped=${skipped}`;
+      window.location.href = `${homePortalUrl}?completed=true&title=${encodeURIComponent(examTitle)}&sheetName=${encodeURIComponent(QUIZ_SHEET_NAME)}&score=${score}&correct=${correct}&wrong=${wrong}&skipped=${skipped}`;
     }
   </script>
 </body>
